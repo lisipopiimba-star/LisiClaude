@@ -1,0 +1,29 @@
+name: Build LisiOS ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm archiso
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build ISO
+        run: |
+          mkarchiso -v -w /tmp/work -o out .
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: LisiOS-ISO
+          path: out/*.iso
+          if-no-files-found: error
