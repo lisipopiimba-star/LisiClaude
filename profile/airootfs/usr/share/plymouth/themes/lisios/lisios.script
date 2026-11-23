@@ -1,0 +1,24 @@
+// LisiOS: чёрный экран -> логотип плавно появляется и слегка «дышит».
+// Улёт логотипа вверх и появление рабочего стола делает сплэш оболочки (Splash.qml).
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+logo.image = Image("logo.png");
+target_h = Window.GetHeight() * 0.20;
+scale = target_h / logo.image.GetHeight();
+logo.image = logo.image.Scale(logo.image.GetWidth() * scale, target_h);
+logo.sprite = Sprite(logo.image);
+logo.x = Window.GetX() + (Window.GetWidth() - logo.image.GetWidth()) / 2;
+logo.y = Window.GetY() + (Window.GetHeight() - logo.image.GetHeight()) / 2;
+logo.sprite.SetPosition(logo.x, logo.y, 10);
+logo.sprite.SetOpacity(0);
+
+frame = 0;
+fun refresh_callback() {
+    frame++;
+    t = frame / 70;               // ~1.4 с при 50 кадрах/с
+    if (t > 1) t = 1;
+    eased = t * t * (3 - 2 * t);  // smoothstep
+    logo.sprite.SetOpacity(eased);
+}
+Plymouth.SetRefreshFunction(refresh_callback);

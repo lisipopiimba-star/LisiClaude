@@ -1,0 +1,102 @@
+# Обязательные пакеты LisiOS (сборка остановится, если чего-то нет в репозиториях)
+
+# --- система ---
+base
+linux
+linux-firmware
+intel-ucode
+amd-ucode
+mkinitcpio
+mkinitcpio-archiso
+arch-install-scripts
+rsync
+sudo
+nano
+parted
+gptfdisk
+dosfstools
+e2fsprogs
+ntfs-3g
+mtools
+squashfs-tools
+grub
+efibootmgr
+syslinux
+edk2-shell
+memtest86+
+memtest86+-efi
+pciutils
+usbutils
+util-linux
+jq
+git
+curl
+file
+
+# --- Wi-Fi / Bluetooth (обязательны) ---
+networkmanager
+wpa_supplicant
+iw
+wireless-regdb
+bluez
+bluez-utils
+sof-firmware
+alsa-firmware
+
+# --- звук ---
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+
+# --- графика (Intel/AMD/виртуалки через Mesa) ---
+mesa
+vulkan-icd-loader
+vulkan-intel
+intel-media-driver
+vulkan-radeon
+xorg-xwayland
+
+# --- оболочка ---
+hyprland
+quickshell
+qt6-wayland
+qt6-declarative
+qt6-svg
+qt6-5compat
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+hyprpolkitagent
+polkit
+brightnessctl
+grim
+slurp
+wl-clipboard
+libnotify
+socat
+
+# --- загрузочная анимация ---
+plymouth
+
+# --- установщик и настройки ---
+python
+python-pyqt6
+
+# --- совместимость с Windows-приложениями (обязательна) ---
+wine
+
+# --- приложения ---
+firefox
+kitty
+thunar
+gvfs
+ttf-jetbrains-mono
+inter-font
+noto-fonts
+noto-fonts-emoji
+papirus-icon-theme
+
+# --- гостевые утилиты для виртуальных машин ---
+qemu-guest-agent
+spice-vdagent
+open-vm-tools

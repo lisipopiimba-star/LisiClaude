@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Графический установщик LisiOS
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland}"
+exec python3 -I /usr/lib/lisios/installer/gui.py "$@"

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Консольный интерфейс установщика (используется GUI; можно запускать вручную: sudo lisios-install-cli --help)
+exec python3 -I /usr/lib/lisios/installer/backend.py "$@"

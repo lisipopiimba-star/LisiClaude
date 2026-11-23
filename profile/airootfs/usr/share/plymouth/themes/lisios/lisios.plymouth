@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=LisiOS
+Description=LisiOS boot animation: black screen, logo fades in
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/lisios
+ScriptFile=/usr/share/plymouth/themes/lisios/lisios.script

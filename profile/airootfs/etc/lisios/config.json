@@ -1,0 +1,6 @@
+{
+  "lang": "ru",
+  "animation_speed": 1.0,
+  "wallpaper": "/usr/share/lisios/wallpapers/default.png",
+  "ai": { "endpoint": "", "model": "" }
+}

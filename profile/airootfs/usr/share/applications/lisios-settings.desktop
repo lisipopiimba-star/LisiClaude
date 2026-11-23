@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=System Settings
+Name[ru]=Системные настройки
+Exec=lisios-settings
+Icon=preferences-system
+Categories=Settings;System;

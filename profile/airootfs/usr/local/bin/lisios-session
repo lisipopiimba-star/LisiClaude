@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Запуск графической сессии LisiOS (Hyprland + оболочка Quickshell).
+export XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland XDG_SESSION_DESKTOP=Hyprland
+export QT_QPA_PLATFORM=wayland GDK_BACKEND=wayland,x11 MOZ_ENABLE_WAYLAND=1
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1 XCURSOR_SIZE=24
+
+CFG_USER="$HOME/.config/lisios/config.json"; CFG_SYS=/etc/lisios/config.json
+cfg() { jq -r "$1 // empty" "$CFG_USER" 2>/dev/null || true; }
+lang="$(cfg .lang)"; [ -n "$lang" ] || lang="$(jq -r '.lang // empty' "$CFG_SYS" 2>/dev/null || true)"
+case "$lang" in
+  ru) loc=ru_RU.UTF-8 ;; en) loc=en_US.UTF-8 ;; *) loc= ;;
+esac
+if [ -n "$loc" ] && locale -a 2>/dev/null | grep -qi "^${loc%.UTF-8}\.utf-\?8$"; then export LANG="$loc"; fi
+
+[ -f /etc/lisios/session.env ] && . /etc/lisios/session.env
+
+mkdir -p "$HOME/.config/hypr" "$HOME/.cache/lisios"
+LOGDIR="$HOME/.cache/lisios"
+vge() { printf '%s\n' "$1" "$2" | sort -V | head -1; }   # меньшая из двух версий
+
+# --- версия Hyprland ---------------------------------------------------------------------------
+# 0.53+  : новый синтаксис правил окон (windowrule = float on, match:class .*)
+# 0.57+  : классический hyprland.conf БОЛЬШЕ НЕ ЧИТАЕТСЯ, конфигурация только на Lua (hyprland.lua)
+ver="$(Hyprland --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+
+use_lua=0
+if [ -z "$ver" ] || [ "$(vge 0.57.0 "$ver")" = 0.57.0 ]; then use_lua=1; fi
+if [ "$use_lua" = 1 ]; then export LISIOS_HYPR_LUA=1; else export LISIOS_HYPR_LUA=0; fi
+echo "$(date +%T) Hyprland: ${ver:-версия не определена}; конфигурация: $([ "$use_lua" = 1 ] && echo Lua || echo hyprland.conf)" >> "$LOGDIR/session.log"
+
+# Конфигурации Hyprland хранятся в /usr/share/lisios/hypr (обычная папка, не скрытая - так их не теряют ни git, ни
+# загрузка через браузер) и копируются в домашний каталог. lisios.lua обновляется при каждом входе, а
+# lisios-animations.lua (его меняют «Системные настройки») - только если его ещё нет.
+for f in lisios.lua lisios-animations.lua; do
+  src="/usr/share/lisios/hypr/$f"; [ -f "$src" ] || src="/etc/skel/.config/hypr/$f"
+  dst="$HOME/.config/hypr/$f"
+  if [ -f "$src" ] && { [ "$f" = lisios.lua ] || [ ! -f "$dst" ]; }; then cp "$src" "$dst"; fi
+done
+for f in hyprland.conf lisios-animations.conf; do
+  [ -f "$HOME/.config/hypr/$f" ] || { [ -f "/etc/skel/.config/hypr/$f" ] && cp "/etc/skel/.config/hypr/$f" "$HOME/.config/hypr/$f"; }
+done
+if [ "$use_lua" = 1 ] && [ ! -f "$HOME/.config/hypr/lisios.lua" ]; then
+  echo "ОШИБКА: нет файла ~/.config/hypr/lisios.lua (и /usr/share/lisios/hypr/lisios.lua) - Hyprland 0.57+ не сможет запуститься." | tee -a "$LOGDIR/session.log"
+fi
+
+# --- правила сессии: .conf (Hyprland < 0.57) и .lua (Hyprland >= 0.57) -------------------------
+gen="$HOME/.config/hypr/lisios-generated.conf"
+genlua="$HOME/.config/hypr/lisios-generated.lua"
+{
+  echo "# Генерируется lisios-session при каждом входе - не редактируйте"
+  if [ -z "$ver" ] || [ "$(vge 0.53.0 "$ver")" = 0.53.0 ]; then
+    echo "windowrule = float on, match:class .*"
+  else
+    echo "windowrulev2 = float, class:.*"
+  fi
+  if systemd-detect-virt -q 2>/dev/null; then
+    echo "cursor { no_hardware_cursors = true }"
+  fi
+  if [ -d /run/archiso ]; then
+    echo "exec-once = sh -c 'sleep 2; lisios-installer'"
+  fi
+} > "$gen"
+{
+  echo "-- Генерируется lisios-session при каждом входе - не редактируйте"
+  if systemd-detect-virt -q 2>/dev/null; then
+    echo 'hl.config({ cursor = { no_hardware_cursors = 1 } })'
+  fi
+  if [ -d /run/archiso ]; then
+    echo 'hl.on("hyprland.start", function() hl.exec_cmd("sh -c '"'"'sleep 2; lisios-installer'"'"'") end)'
+  fi
+} > "$genlua"
+
+if systemd-detect-virt -q 2>/dev/null; then
+  export WLR_NO_HARDWARE_CURSORS=1 WLR_RENDERER_ALLOW_SOFTWARE=1
+fi
+
+dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP LANG LISIOS_HYPR_LUA 2>/dev/null || true
+
+# --- страховка автозапуска оболочки -------------------------------------------------------------
+# Основной запуск идёт из конфигурации Hyprland (hyprland.start / exec-once). Если по какой-то причине
+# он не сработал (ошибка в конфиге, смена формата в новой версии Hyprland), через несколько секунд
+# после появления Wayland-сокета оболочку запускает эта проверка. lisios-shell сам не даёт запустить
+# вторую копию.
+(
+  uid="$(id -u)"
+  disp=""
+  for _ in $(seq 1 80); do
+    sleep 0.5
+    pgrep -u "$uid" -x Hyprland >/dev/null 2>&1 || continue
+    for s in "$XDG_RUNTIME_DIR"/wayland-*; do
+      case "$s" in *.lock) ;; *) [ -S "$s" ] && disp="${s##*/}" ;; esac
+    done
+    [ -n "$disp" ] && break
+  done
+  [ -n "$disp" ] || exit 0
+  sleep 10
+  pgrep -u "$uid" -x quickshell >/dev/null 2>&1 && exit 0
+  pgrep -u "$uid" -x Hyprland  >/dev/null 2>&1 || exit 0
+  export WAYLAND_DISPLAY="$disp"
+  sig="$(ls -t "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)"
+  [ -n "$sig" ] && export HYPRLAND_INSTANCE_SIGNATURE="$sig"
+  echo "$(date +%T) оболочка не была запущена конфигурацией Hyprland - запускаю из lisios-session" >> "$LOGDIR/session.log"
+  exec lisios-shell
+) >/dev/null 2>&1 &
+
+# --- запуск Hyprland ----------------------------------------------------------------------------
+# start-hyprland (есть с Hyprland 0.53) - штатная обёртка; без неё Hyprland рисует собственную плашку
+# «запущен без start-hyprland» поверх рабочего стола.
+hypr_args=()
+[ "$use_lua" = 1 ] && hypr_args=(-c "$HOME/.config/hypr/lisios.lua")
+if command -v start-hyprland >/dev/null 2>&1; then
+  start-hyprland -- "${hypr_args[@]}"
+else
+  Hyprland "${hypr_args[@]}"
+fi
+rc=$?
+echo
+echo "Графическая сессия завершилась (код $rc)."
+echo "Если окружение не запускается (часто в виртуальной машине без 3D-ускорения),"
+echo "установить систему можно из консоли:  sudo lisios-install-cli --help"
+echo "Журналы: $LOGDIR/session.log, $LOGDIR/shell.log, $LOGDIR/hypr-lua.log"
+echo "Журнал Hyprland: \$XDG_RUNTIME_DIR/hypr/*/hyprland.log (или ~/.local/share/hyprland/hyprland.log)"
+exit "$rc"

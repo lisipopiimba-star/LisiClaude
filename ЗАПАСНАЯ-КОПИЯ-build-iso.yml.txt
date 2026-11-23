@@ -1,0 +1,57 @@
+name: Build LisiOS ISO
+
+# Запускается сам при загрузке файлов в ветку main и вручную (Actions -> Build LisiOS ISO -> Run workflow)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: build-iso
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache || true
+          df -h /
+
+      - name: Build ISO inside Arch Linux container
+        run: |
+          mkdir -p out
+          docker run --rm --privileged \
+            -v "$PWD":/src:ro -v "$PWD/out":/out \
+            archlinux:latest \
+            bash -c 'bash /src/scripts/build-in-container.sh 2>&1 | tee /out/build.log; exit ${PIPESTATUS[0]}'
+
+      - name: List result
+        if: always()
+        run: ls -lh out || true
+
+      - name: Upload ISO
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lisios-iso
+          path: |
+            out/*.iso
+            out/*.sha256
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: out/build.log
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# LisiOS Game Mode: lisios-gamemode [status|on|off|toggle|auto on|off|add ИМЯ ФАЙЛ|remove ИМЯ|restore|gui|daemon]
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland}"
+exec /usr/bin/python3 -I /usr/lib/lisios/gamemode/run.py "$@"

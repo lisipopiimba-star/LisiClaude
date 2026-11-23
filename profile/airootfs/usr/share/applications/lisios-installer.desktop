@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Install LisiOS
+Name[ru]=Установить LisiOS
+Exec=lisios-installer
+Icon=system-software-install
+Categories=System;

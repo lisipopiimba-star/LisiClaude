@@ -1,0 +1,13 @@
+[Unit]
+Description=LisiOS: create live user
+ConditionPathExists=/run/archiso
+Before=getty@tty1.service
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/lisios-live-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

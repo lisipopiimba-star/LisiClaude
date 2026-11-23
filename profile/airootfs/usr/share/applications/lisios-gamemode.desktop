@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=LisiOS Game Mode
+Name[ru]=LisiOS Game Mode
+Comment=Prioritise selected games over background apps
+Comment[ru]=Приоритет выбранных игр перед фоновыми приложениями
+Exec=lisios-gamemode gui
+Icon=applications-games
+Categories=System;Settings;

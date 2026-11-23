@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Заменяет логотип загрузки/сплэша без пересборки системы. Запускать через pkexec/sudo.
+#   lisios-set-boot-image /путь/к/logo.png
+set -euo pipefail
+src="${1:-}"
+[ -f "$src" ] || { echo "Файл не найден: $src" >&2; exit 1; }
+case "$(file -b --mime-type "$src")" in image/png) ;; *) echo "Нужен PNG" >&2; exit 1;; esac
+install -Dm644 "$src" /usr/share/lisios/branding/logo.png
+install -Dm644 "$src" /usr/share/plymouth/themes/lisios/logo.png
+if [ -d /run/archiso ]; then echo "live-режим: initramfs не пересобирается"; exit 0; fi
+plymouth-set-default-theme lisios
+mkinitcpio -P
+echo "Готово: загрузочный логотип заменён"

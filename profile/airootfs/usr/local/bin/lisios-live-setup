@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Создаёт пользователя live-сессии. Запускается только в live-режиме.
+set -e
+id liveuser >/dev/null 2>&1 || useradd -m -G wheel,audio,video,input,storage,optical,lp -s /bin/bash -c "LisiOS Live" liveuser
+passwd -d liveuser >/dev/null

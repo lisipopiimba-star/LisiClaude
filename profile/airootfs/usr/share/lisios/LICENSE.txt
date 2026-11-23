@@ -1,0 +1,11 @@
+ЛИЦЕНЗИОННОЕ СОГЛАШЕНИЕ LisiOS / LisiOS LICENSE AGREEMENT
+
+[ЗАМЕНИТЕ ЭТОТ ТЕКСТ СВОИМ СОГЛАШЕНИЕМ: файл profile/airootfs/usr/share/lisios/LICENSE.txt]
+[REPLACE THIS TEXT WITH YOUR OWN AGREEMENT: profile/airootfs/usr/share/lisios/LICENSE.txt]
+
+LisiOS собрана на основе Arch Linux и свободного программного обеспечения.
+Компоненты распространяются на условиях их собственных лицензий (GPL, MIT, LGPL и др.).
+Программное обеспечение предоставляется «как есть», без гарантий.
+
+LisiOS is built on Arch Linux and free software. Components are distributed under
+their own licenses (GPL, MIT, LGPL, etc.). The software is provided "as is", without warranty.

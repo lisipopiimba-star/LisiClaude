@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Оболочка LisiOS (Quickshell).
+#   lisios-shell                      запуск оболочки (одна копия; при падении перезапускается)
+#   lisios-shell ipc <цель> <функция> вызов IpcHandler работающей оболочки, например: lisios-shell ipc launcher toggle
+#   lisios-shell --path               какой каталог оболочки используется
+#   lisios-shell --check [каталог]    проверка: запускает оболочку на ~10 с и ищет ошибки в журнале (код 0 = всё хорошо)
+# Пользователь может подменить оболочку своей: ~/.config/lisios/shell/shell.qml
+# Если пользовательская оболочка не запускается - автоматически используется штатная.
+SYS=/usr/share/lisios/shell
+USR="$HOME/.config/lisios/shell"
+LOGDIR="${XDG_CACHE_HOME:-$HOME/.cache}/lisios"
+LOG="$LOGDIR/shell.log"
+
+pick() {
+  if [ -z "$FORCE_SYS" ] && [ -f "$USR/shell.qml" ]; then echo "$USR"; else echo "$SYS"; fi
+}
+running() { pgrep -u "$(id -u)" -x quickshell >/dev/null 2>&1; }
+
+case "${1:-}" in
+  --path) pick; exit 0 ;;
+  ipc)    shift; exec quickshell -p "$(pick)" ipc call "$@" ;;
+  --check)
+    dir="${2:-$(pick)}"
+    [ -f "$dir/shell.qml" ] || { echo "Нет файла $dir/shell.qml" >&2; exit 2; }
+    if running && [ -z "$LISIOS_CHECK_FORCE" ]; then
+      echo "Оболочка уже запущена. Остановите её (pkill quickshell) или задайте LISIOS_CHECK_FORCE=1." >&2
+      exit 2
+    fi
+    out="$(mktemp)"
+    timeout "${LISIOS_CHECK_SECONDS:-10}" quickshell -p "$dir" --no-color >"$out" 2>&1
+    rc=$?
+    cat "$out"
+    if grep -Eq '(^|[[:space:]])(ERROR|FATAL)|Failed to load configuration|is not a type|is not installed|Could not load' "$out"; then
+      echo "--- ПРОВЕРКА НЕ ПРОЙДЕНА: в журнале есть ошибки (см. выше) ---" >&2; rm -f "$out"; exit 1
+    fi
+    if [ "$rc" != 124 ]; then
+      echo "--- ПРОВЕРКА НЕ ПРОЙДЕНА: оболочка завершилась сама (код $rc) ---" >&2; rm -f "$out"; exit 1
+    fi
+    echo "--- ПРОВЕРКА ПРОЙДЕНА: оболочка проработала до конца таймера без ошибок ---"; rm -f "$out"; exit 0 ;;
+esac
+
+# --- обычный запуск ------------------------------------------------------------------------------
+running && exit 0     # вторую копию не запускаем (её запускают и Hyprland, и страховка в lisios-session)
+mkdir -p "$LOGDIR"
+[ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt 1048576 ] && : > "$LOG"
+
+fast=0
+while :; do
+  dir="$(pick)"
+  # Wayland-сокет пропал вместе с композитором - выходим
+  if [ -n "$WAYLAND_DISPLAY" ] && [ -n "$XDG_RUNTIME_DIR" ] && [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+    echo "[$(date +%T)] Wayland-сокет недоступен - выхожу" >>"$LOG"; exit 1
+  fi
+  echo "[$(date +%T)] запуск quickshell -p $dir" >>"$LOG"
+  start=$(date +%s)
+  quickshell -p "$dir" --no-color --no-duplicate >>"$LOG" 2>&1
+  rc=$?
+  up=$(( $(date +%s) - start ))
+  echo "[$(date +%T)] quickshell завершился: код $rc, проработал ${up} с" >>"$LOG"
+  [ "$rc" = 0 ] && exit 0                    # штатное завершение (quickshell kill)
+  if [ "$up" -lt 5 ]; then fast=$((fast + 1)); else fast=0; fi
+  if [ "$fast" -ge 2 ] && [ "$dir" != "$SYS" ] && [ -z "$FORCE_SYS" ]; then
+    echo "[$(date +%T)] пользовательская оболочка не запускается - использую штатную $SYS" >>"$LOG"
+    FORCE_SYS=1; fast=0
+  fi
+  if [ "$fast" -ge 4 ]; then
+    echo "[$(date +%T)] оболочка падает сразу после запуска - остановка. Подробности выше." >>"$LOG"; exit 1
+  fi
+  sleep 2
+done

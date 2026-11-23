@@ -1,0 +1,8 @@
+NAME="LisiOS"
+PRETTY_NAME="LisiOS"
+ID=lisios
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="38;2;124;92;255"
+HOME_URL="https://lisios.local/"
+LOGO=lisios

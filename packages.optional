@@ -1,0 +1,5 @@
+# Необязательные пакеты: если пакета нет в репозитории - он просто пропускается
+noto-fonts-cjk
+ttf-font-awesome
+nvidia-prime
+libva-intel-driver
